@@ -1,0 +1,132 @@
+{
+  "metadata": {
+    "created_at": "2025-09-13T14:03:49.647049",
+    "version": "1.0",
+    "total_entities": 5,
+    "total_relations": 5,
+    "confidence_stats": {
+      "mean": 0.9380000000000001,
+      "min": 0.9,
+      "max": 0.98
+    },
+    "processing_history": [],
+    "last_updated": "2025-09-13T14:03:49.647098"
+  },
+  "entities": [
+    {
+      "id": "llm_1",
+      "label": "Large Language Models",
+      "type": "Concept",
+      "properties": {
+        "field": "AI",
+        "year": 2023,
+        "description": "Advanced AI models for text processing"
+      },
+      "confidence": 0.95,
+      "source": "research_paper.pdf"
+    },
+    {
+      "id": "gpt4_1",
+      "label": "GPT-4",
+      "type": "Model",
+      "properties": {
+        "company": "OpenAI",
+        "parameters": "1.76T",
+        "release_year": 2023
+      },
+      "confidence": 0.98,
+      "source": "research_paper.pdf"
+    },
+    {
+      "id": "transformer_1",
+      "label": "Transformer Architecture",
+      "type": "Architecture",
+      "properties": {
+        "attention_mechanism": "multi-head",
+        "year": 2017
+      },
+      "confidence": 0.94,
+      "source": "research_paper.pdf"
+    },
+    {
+      "id": "bert_1",
+      "label": "BERT",
+      "type": "Model",
+      "properties": {
+        "bidirectional": true,
+        "pretraining": "MLM"
+      },
+      "confidence": 0.92,
+      "source": "bert_paper.pdf"
+    },
+    {
+      "id": "attention_1",
+      "label": "Attention Mechanism",
+      "type": "Concept",
+      "properties": {
+        "type": "self-attention",
+        "complexity": "O(n²)"
+      },
+      "confidence": 0.9,
+      "source": "attention_paper.pdf"
+    }
+  ],
+  "relations": [
+    {
+      "id": "rel_1",
+      "source_id": "gpt4_1",
+      "target_id": "llm_1",
+      "type": "InstanceOf",
+      "properties": {
+        "specificity": "high",
+        "confidence_reason": "GPT-4 is clearly an LLM"
+      },
+      "confidence": 0.96,
+      "source": "research_paper.pdf"
+    },
+    {
+      "id": "rel_2",
+      "source_id": "bert_1",
+      "target_id": "llm_1",
+      "type": "InstanceOf",
+      "properties": {
+        "bidirectional": true
+      },
+      "confidence": 0.93,
+      "source": "bert_paper.pdf"
+    },
+    {
+      "id": "rel_3",
+      "source_id": "transformer_1",
+      "target_id": "attention_1",
+      "type": "Uses",
+      "properties": {
+        "primary_mechanism": true
+      },
+      "confidence": 0.91,
+      "source": "attention_paper.pdf"
+    },
+    {
+      "id": "rel_4",
+      "source_id": "gpt4_1",
+      "target_id": "transformer_1",
+      "type": "BasedOn",
+      "properties": {
+        "architecture": "decoder-only"
+      },
+      "confidence": 0.89,
+      "source": "research_paper.pdf"
+    },
+    {
+      "id": "rel_5",
+      "source_id": "bert_1",
+      "target_id": "transformer_1",
+      "type": "BasedOn",
+      "properties": {
+        "architecture": "encoder-only"
+      },
+      "confidence": 0.87,
+      "source": "bert_paper.pdf"
+    }
+  ]
+}
