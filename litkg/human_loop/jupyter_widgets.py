@@ -56,23 +56,18 @@ class JupyterInterface:
             """
         )
 
-        # Stats display
-        stats_widget = self._create_stats_widget()
+        # Create refreshable widgets (stored as instance variables for updates)
+        self.stats_widget = self.widgets.Output()
+        self.validation_widget_output = self.widgets.Output()
+        self.viz_widget_output = self.widgets.Output()
+        self.export_widget_output = self.widgets.Output()
 
-        # File upload
+        # Create widgets
         upload_widget = self._create_upload_widget()
-
-        # Configuration panel
-        config_widget = self._create_config_widget()
-
-        # Validation interface
         validation_widget = self._create_validation_widget()
-
-        # Visualization panel
         viz_widget = self._create_visualization_widget()
-
-        # Export panel
         export_widget = self._create_export_widget()
+        config_widget = self._create_config_widget()
 
         # Main tabs
         tab = self.widgets.Tab()
@@ -85,12 +80,91 @@ class JupyterInterface:
         ]
         tab.titles = ["📄 Upload", "✅ Validate", "📊 Visualize", "💾 Export", "⚙️ Config"]
 
+        # Initial refresh
+        self._refresh_all_widgets()
+
         # Layout
         return self.widgets.VBox([
             header,
-            stats_widget,
+            self.stats_widget,
             tab
         ])
+
+    def _refresh_all_widgets(self):
+        """Refresh all dynamic widgets with current data."""
+        # Refresh stats
+        with self.stats_widget:
+            self.clear_output(wait=True)
+            stats_content = self._get_stats_html()
+            print(stats_content)
+
+        # Refresh validation widget
+        with self.validation_widget_output:
+            self.clear_output(wait=True)
+            if self.knowledge_graph and (self.knowledge_graph.entities or self.knowledge_graph.relations):
+                self._display_validation_content()
+            else:
+                print("No entities or relations to validate yet. Upload a PDF to get started!")
+
+        # Refresh visualization widget
+        with self.viz_widget_output:
+            self.clear_output(wait=True)
+            if self.knowledge_graph and self.knowledge_graph.entities:
+                self._display_visualization_content()
+            else:
+                print("No data to visualize yet. Upload a PDF to get started!")
+
+        # Refresh export widget
+        with self.export_widget_output:
+            self.clear_output(wait=True)
+            if self.knowledge_graph and self.knowledge_graph.entities:
+                self._display_export_content()
+            else:
+                print("No data to export yet. Upload a PDF to get started!")
+
+    def _get_stats_html(self):
+        """Get HTML for statistics display."""
+        if not self.knowledge_graph:
+            return "No knowledge graph loaded."
+
+        entities_count = len(self.knowledge_graph.entities)
+        relations_count = len(self.knowledge_graph.relations)
+        avg_confidence = self._get_avg_confidence()
+
+        return f"""
+📊 Knowledge Graph Statistics
+=============================
+Entities: {entities_count}
+Relations: {relations_count}
+Average Confidence: {avg_confidence:.2f}
+
+Entity Types:
+""" + self._get_entity_types_summary() + """
+
+Relation Types:
+""" + self._get_relation_types_summary()
+
+    def _get_entity_types_summary(self):
+        """Get summary of entity types."""
+        if not self.knowledge_graph or not self.knowledge_graph.entities:
+            return "None"
+
+        entity_types = {}
+        for entity in self.knowledge_graph.entities.values():
+            entity_types[entity.type] = entity_types.get(entity.type, 0) + 1
+
+        return "\n".join([f"- {etype}: {count}" for etype, count in sorted(entity_types.items())])
+
+    def _get_relation_types_summary(self):
+        """Get summary of relation types."""
+        if not self.knowledge_graph or not self.knowledge_graph.relations:
+            return "None"
+
+        relation_types = {}
+        for relation in self.knowledge_graph.relations.values():
+            relation_types[relation.type] = relation_types.get(relation.type, 0) + 1
+
+        return "\n".join([f"- {rtype}: {count}" for rtype, count in sorted(relation_types.items())])
 
     def _create_stats_widget(self):
         """Create statistics display widget."""
@@ -182,6 +256,11 @@ class JupyterInterface:
                         print(f"❌ Error processing {filename}: {str(e)}")
 
                 print(f"🎉 Processing complete! Total: {new_entities_count} entities, {new_relations_count} relations")
+
+                # Refresh all widgets to show new data
+                print("🔄 Refreshing all interface panels...")
+                self._refresh_all_widgets()
+                print("✅ Interface updated!")
 
         process_btn.on_click(on_process_click)
 
@@ -316,46 +395,48 @@ class JupyterInterface:
 
     def _create_validation_widget(self):
         """Create validation interface widget."""
-        if not self.knowledge_graph:
-            return self.widgets.HTML("<p>Load a knowledge graph first.</p>")
-
-        # Entity validation
-        entity_list = self._create_entity_validation_widget()
-
-        # Relation validation
-        relation_list = self._create_relation_validation_widget()
-
-        # Confidence adjustment
-        confidence_slider = self.widgets.FloatSlider(
-            value=0.7,
-            min=0.0,
-            max=1.0,
-            step=0.1,
-            description='Min Confidence:',
-            style={'description_width': 'initial'}
-        )
-
-        # Action buttons
-        approve_btn = self.widgets.Button(
-            description='✅ Approve All',
-            button_style='success'
-        )
-
-        refine_btn = self.widgets.Button(
-            description='🔧 Request Refinement',
-            button_style='warning'
-        )
-
-        validation_tabs = self.widgets.Tab()
-        validation_tabs.children = [entity_list, relation_list]
-        validation_tabs.titles = ["Entities", "Relations"]
-
         return self.widgets.VBox([
-            self.widgets.HTML("<h3>✅ Human Validation</h3>"),
-            confidence_slider,
-            validation_tabs,
-            self.widgets.HBox([approve_btn, refine_btn])
+            self.widgets.HTML("<h3>✅ Entity & Relation Validation</h3>"),
+            self.validation_widget_output
         ])
+
+    def _display_validation_content(self):
+        """Display validation content in the output widget."""
+        if not self.knowledge_graph:
+            print("No knowledge graph available for validation.")
+            return
+
+        # Display entities
+        print("🏷️ Entities:")
+        print("=" * 40)
+        if self.knowledge_graph.entities:
+            for i, entity in enumerate(list(self.knowledge_graph.entities.values())[:10], 1):
+                print(f"{i:2d}. {entity.label} ({entity.type}) - Confidence: {entity.confidence:.2f}")
+            if len(self.knowledge_graph.entities) > 10:
+                print(f"... and {len(self.knowledge_graph.entities) - 10} more entities")
+        else:
+            print("No entities found.")
+
+        print("\n🔗 Relations:")
+        print("=" * 40)
+        if self.knowledge_graph.relations:
+            for i, relation in enumerate(list(self.knowledge_graph.relations.values())[:10], 1):
+                source_entity = self.knowledge_graph.entities.get(relation.source_id)
+                target_entity = self.knowledge_graph.entities.get(relation.target_id)
+                source_label = source_entity.label if source_entity else relation.source_id
+                target_label = target_entity.label if target_entity else relation.target_id
+                print(f"{i:2d}. {source_label} → {relation.type} → {target_label} (Conf: {relation.confidence:.2f})")
+            if len(self.knowledge_graph.relations) > 10:
+                print(f"... and {len(self.knowledge_graph.relations) - 10} more relations")
+        else:
+            print("No relations found.")
+
+        # Add interactive editing note
+        print("\n💡 Interactive Validation:")
+        print("   • In a full implementation, you would see editing widgets here")
+        print("   • Ability to modify entities and relations")
+        print("   • Confidence threshold adjustment")
+        print("   • Approve/reject individual items")
 
     def _create_entity_validation_widget(self):
         """Create entity validation widget."""
@@ -451,58 +532,64 @@ class JupyterInterface:
 
     def _create_visualization_widget(self):
         """Create visualization widget."""
-        viz_html = """
-        <h3>📊 Knowledge Graph Visualization</h3>
-        <p>Interactive graph visualization will appear here.</p>
-        <div id="kg-visualization" style="height: 400px; border: 1px solid #ddd; text-align: center; line-height: 400px;">
-            Graph visualization placeholder
-        </div>
-        """
-
         # Layout options
         layout_dropdown = self.widgets.Dropdown(
-            options=['Force-directed', 'Hierarchical', 'Circular', 'Random'],
-            value='Force-directed',
+            options=['spring', 'circular', 'random'],
+            value='spring',
             description='Layout:',
             style={'description_width': 'initial'}
         )
 
-        # Show options
-        show_labels = self.widgets.Checkbox(value=True, description='Show Labels')
-        show_confidence = self.widgets.Checkbox(value=True, description='Show Confidence')
-        show_communities = self.widgets.Checkbox(value=False, description='Highlight Communities')
-
         # Update button
-        update_btn = self.widgets.Button(
-            description='🔄 Update Visualization',
+        viz_btn = self.widgets.Button(
+            description='📊 Generate Visualization',
             button_style='info'
         )
 
-        def on_update_viz(b):
-            """Handle visualization update."""
-            # This would integrate with the actual visualization library
-            print("Updating visualization...")
+        def on_viz_click(b):
+            with self.viz_widget_output:
+                self.clear_output(wait=True)
+                if not self.knowledge_graph or not self.knowledge_graph.entities:
+                    print("No entities to visualize. Upload a document first.")
+                    return
 
-        update_btn.on_click(on_update_viz)
+                print("🎨 Generating visualization...")
+                try:
+                    self.knowledge_graph.visualize(layout=layout_dropdown.value)
+                except Exception as e:
+                    print(f"❌ Visualization error: {e}")
 
-        controls = self.widgets.HBox([
-            layout_dropdown,
-            show_labels,
-            show_confidence,
-            show_communities,
-            update_btn
-        ])
+        viz_btn.on_click(on_viz_click)
 
         return self.widgets.VBox([
-            self.widgets.HTML(viz_html),
-            controls
+            self.widgets.HTML("<h3>📊 Knowledge Graph Visualization</h3>"),
+            self.widgets.HBox([layout_dropdown, viz_btn]),
+            self.viz_widget_output
         ])
+
+    def _display_visualization_content(self):
+        """Display visualization content in the output widget."""
+        if not self.knowledge_graph or not self.knowledge_graph.entities:
+            print("No entities to visualize. Upload a document first.")
+            return
+
+        print("📊 Visualization Ready!")
+        print(f"Current graph: {len(self.knowledge_graph.entities)} entities, {len(self.knowledge_graph.relations)} relations")
+        print("Click 'Generate Visualization' button above to create the graph plot.")
+
+        # Show a quick text-based preview
+        print("\n🔍 Quick Preview:")
+        print("=" * 30)
+        for i, entity in enumerate(list(self.knowledge_graph.entities.values())[:5], 1):
+            print(f"• {entity.label} ({entity.type})")
+        if len(self.knowledge_graph.entities) > 5:
+            print(f"... and {len(self.knowledge_graph.entities) - 5} more entities")
 
     def _create_export_widget(self):
         """Create export interface widget."""
         # Format selection
         format_dropdown = self.widgets.Dropdown(
-            options=['JSON', 'Neo4j Cypher', 'GraphML', 'CSV', 'Interactive HTML'],
+            options=['JSON', 'Neo4j Cypher', 'GraphML'],
             value='JSON',
             description='Format:',
             style={'description_width': 'initial'}
@@ -515,77 +602,59 @@ class JupyterInterface:
             style={'description_width': 'initial'}
         )
 
-        # Export options
-        include_metadata = self.widgets.Checkbox(value=True, description='Include Metadata')
-        filter_confidence = self.widgets.Checkbox(value=False, description='Filter by Confidence')
-        min_confidence = self.widgets.FloatSlider(
-            value=0.7,
-            min=0.0,
-            max=1.0,
-            step=0.1,
-            description='Min Confidence:',
-            disabled=True,
-            style={'description_width': 'initial'}
-        )
-
-        def on_filter_change(change):
-            """Handle filter confidence checkbox."""
-            min_confidence.disabled = not change['new']
-
-        filter_confidence.observe(on_filter_change, names='value')
-
         # Export button
         export_btn = self.widgets.Button(
             description='💾 Export',
             button_style='primary'
         )
 
-        export_status = self.widgets.Output()
-
         def on_export_click(b):
-            """Handle export button click."""
-            with export_status:
+            with self.export_widget_output:
                 self.clear_output(wait=True)
-                if not self.knowledge_graph:
-                    print("❌ No knowledge graph to export.")
+                if not self.knowledge_graph or not self.knowledge_graph.entities:
+                    print("No data to export. Upload a document first.")
                     return
 
-                format_val = format_dropdown.value
-                filename = filename_text.value
-
-                print(f"📤 Exporting as {format_val}...")
-
                 try:
-                    # Get appropriate file extension
-                    ext_map = {
-                        'JSON': '.json',
-                        'Neo4j Cypher': '.cypher',
-                        'GraphML': '.graphml',
-                        'CSV': '.csv',
-                        'Interactive HTML': '.html'
+                    format_map = {
+                        'JSON': 'json',
+                        'Neo4j Cypher': 'neo4j',
+                        'GraphML': 'graphml'
                     }
 
-                    full_filename = filename + ext_map[format_val]
+                    filename = f"{filename_text.value}.{format_map[format_dropdown.value]}"
+                    print(f"📁 Exporting to {filename}...")
 
-                    # This would call the actual export method
-                    self.knowledge_graph.export(full_filename, format_val.lower().replace(' ', '_'))
-
-                    print(f"✅ Exported to: {full_filename}")
+                    self.knowledge_graph.export(filename)
+                    print(f"✅ Successfully exported {len(self.knowledge_graph.entities)} entities and {len(self.knowledge_graph.relations)} relations!")
+                    print(f"📂 File saved: {filename}")
 
                 except Exception as e:
-                    print(f"❌ Export failed: {e}")
+                    print(f"❌ Export error: {e}")
 
         export_btn.on_click(on_export_click)
 
         return self.widgets.VBox([
             self.widgets.HTML("<h3>💾 Export Knowledge Graph</h3>"),
             self.widgets.HBox([format_dropdown, filename_text]),
-            include_metadata,
-            filter_confidence,
-            min_confidence,
             export_btn,
-            export_status
+            self.export_widget_output
         ])
+
+    def _display_export_content(self):
+        """Display export content in the output widget."""
+        if not self.knowledge_graph or not self.knowledge_graph.entities:
+            print("No data to export. Upload a document first.")
+            return
+
+        print("💾 Export Ready!")
+        print(f"Current graph: {len(self.knowledge_graph.entities)} entities, {len(self.knowledge_graph.relations)} relations")
+        print("Configure export settings above and click 'Export' to save your knowledge graph.")
+
+        print(f"\nAvailable formats:")
+        print("• JSON - Standard JSON format for data exchange")
+        print("• Neo4j Cypher - Cypher commands for Neo4j import")
+        print("• GraphML - Standard graph format for network analysis tools")
 
     def _create_config_widget(self):
         """Create configuration widget."""
