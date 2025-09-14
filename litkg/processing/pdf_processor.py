@@ -449,3 +449,82 @@ class PDFProcessor:
             processors.append("llm_sherpa")
         processors.extend([name for name, _ in self.fallback_processors])
         return processors
+
+    def process_file(self, filepath: Union[str, Path]) -> Dict[str, Any]:
+        """Process PDF file and return structured data."""
+        # For now, extract text and return basic structure
+        # This would be enhanced to use LLM for entity/relation extraction
+        try:
+            chunks = self.extract_text(filepath, chunking_strategy="semantic")
+            text = "\n".join(chunks)
+
+            # Mock entity/relation extraction - in real implementation,
+            # this would use LLM to extract structured data
+            entities, relations = self._extract_entities_relations(text, str(filepath))
+
+            return {
+                'text': text,
+                'chunks': chunks,
+                'entities': entities,
+                'relations': relations,
+                'metadata': self.get_document_metadata(filepath)
+            }
+        except Exception as e:
+            logger.error(f"Error processing file {filepath}: {e}")
+            return {'entities': [], 'relations': [], 'text': '', 'chunks': []}
+
+    def _extract_entities_relations(self, text: str, filename: str) -> Tuple[List, List]:
+        """Mock entity/relation extraction from text."""
+        # This is a placeholder - real implementation would use LLM
+        from ..core.knowledge_graph import Entity, Relation
+        import random
+
+        entities = []
+        relations = []
+
+        # Simple keyword-based extraction
+        keywords = {
+            'Concept': ['algorithm', 'method', 'approach', 'technique', 'model', 'system'],
+            'Technology': ['AI', 'machine learning', 'deep learning', 'neural network'],
+            'Person': ['author', 'researcher', 'scientist', 'professor'],
+            'Organization': ['university', 'institute', 'company', 'laboratory']
+        }
+
+        entity_id = 0
+        found_entities = {}
+
+        for entity_type, keyword_list in keywords.items():
+            for keyword in keyword_list:
+                if keyword.lower() in text.lower():
+                    entity_id += 1
+                    entity = Entity(
+                        id=f"pdf_entity_{entity_id}",
+                        label=keyword.title(),
+                        type=entity_type,
+                        properties={"source": filename, "extracted_from": "pdf_text"},
+                        confidence=random.uniform(0.7, 0.95),
+                        source=filename
+                    )
+                    entities.append(entity)
+                    found_entities[keyword] = entity
+
+                    if len(entities) >= 8:
+                        break
+            if len(entities) >= 8:
+                break
+
+        # Create mock relations
+        entity_list = list(found_entities.values())
+        for i in range(min(4, len(entity_list) - 1)):
+            relation = Relation(
+                id=f"pdf_relation_{i+1}",
+                source_id=entity_list[i].id,
+                target_id=entity_list[i+1].id,
+                type=random.choice(["RelatedTo", "UsedIn", "ImplementedBy"]),
+                properties={"source": filename, "extracted_from": "pdf_text"},
+                confidence=random.uniform(0.6, 0.9),
+                source=filename
+            )
+            relations.append(relation)
+
+        return entities, relations

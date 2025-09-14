@@ -7,6 +7,15 @@ into interactive knowledge graphs.
 
 import litkg
 
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Environment variables loaded")
+except ImportError:
+    print("⚠️ python-dotenv not installed. Make sure to set API keys manually.")
+    print("   Install with: pip install python-dotenv")
+
 def basic_example():
     """Basic 4-line usage example."""
     print("🚀 LitKG SDK - Basic Usage Example")

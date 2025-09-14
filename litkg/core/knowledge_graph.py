@@ -266,16 +266,24 @@ class KnowledgeGraph:
         for i, entity in enumerate(sorted_entities, 1):
             print(f"  {i}. {entity.label} ({entity.type}) - {entity.confidence:.2f}")
 
-    def visualize(self, layout: str = "spring", **kwargs) -> None:
+    def visualize(self, layout: str = "spring", figsize=(12, 8), **kwargs) -> None:
         """Visualize the knowledge graph."""
         try:
             import matplotlib.pyplot as plt
             import numpy as np
 
-            plt.figure(figsize=(12, 8))
+            # Check if graph is empty
+            if not self.entities or not self.graph.nodes():
+                print("⚠️ Knowledge graph is empty. Add some entities first.")
+                return
+
+            plt.figure(figsize=figsize)
+
+            # Extract layout-specific kwargs and figsize
+            layout_kwargs = {k: v for k, v in kwargs.items() if k != 'figsize'}
 
             if layout == "spring":
-                pos = nx.spring_layout(self.graph, **kwargs)
+                pos = nx.spring_layout(self.graph, **layout_kwargs)
             elif layout == "circular":
                 pos = nx.circular_layout(self.graph)
             elif layout == "random":
@@ -283,20 +291,29 @@ class KnowledgeGraph:
             else:
                 pos = nx.spring_layout(self.graph)
 
-            # Draw nodes
+            # Draw nodes with better visibility
             node_colors = [self.entities[node].confidence for node in self.graph.nodes()]
-            nx.draw_networkx_nodes(self.graph, pos, node_color=node_colors,
-                                 cmap=plt.cm.RdYlBu, node_size=300, alpha=0.8)
+            node_sizes = [300 + (self.entities[node].confidence * 200) for node in self.graph.nodes()]
+
+            # Create the plot
+            nodes = nx.draw_networkx_nodes(self.graph, pos, node_color=node_colors,
+                                         cmap=plt.cm.viridis, node_size=node_sizes, alpha=0.8)
 
             # Draw edges
-            nx.draw_networkx_edges(self.graph, pos, alpha=0.5, width=1)
+            nx.draw_networkx_edges(self.graph, pos, alpha=0.6, width=2, edge_color='gray')
 
             # Draw labels
-            labels = {node: self.entities[node].label[:15] for node in self.graph.nodes()}
-            nx.draw_networkx_labels(self.graph, pos, labels, font_size=8)
+            labels = {node: self.entities[node].label[:15] + "..." if len(self.entities[node].label) > 15 else self.entities[node].label
+                     for node in self.graph.nodes()}
+            nx.draw_networkx_labels(self.graph, pos, labels, font_size=10, font_weight='bold')
 
-            plt.title("Knowledge Graph Visualization")
+            plt.title(f"Knowledge Graph ({len(self.entities)} entities, {len(self.relations)} relations)")
             plt.axis('off')
+
+            # Add colorbar for confidence scores (only if we have nodes)
+            if len(node_colors) > 0:
+                plt.colorbar(nodes, label='Confidence Score', shrink=0.8)
+
             plt.tight_layout()
             plt.show()
 

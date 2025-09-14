@@ -60,6 +60,8 @@ jupyter = [
     "dash>=2.14.0",
     "jupyter>=1.0.0",
     "notebook>=6.5.0",
+    "matplotlib>=3.5.0",
+    "python-dotenv>=1.0.0",
 ]
 temporal = [
     "graphiti-core>=0.1.0",

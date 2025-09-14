@@ -110,6 +110,19 @@ litkg/
 
 ## 🔧 Configuration
 
+### Quick Setup with Examples
+
+```bash
+# Navigate to examples directory
+cd examples
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your API keys
+nano .env
+```
+
 ### Environment Variables
 
 ```bash

@@ -108,6 +108,10 @@ class Config:
         if self.max_workers <= 0:
             raise ValueError("Max workers must be positive")
 
+    def get(self, key: str, default=None):
+        """Get configuration value with default fallback."""
+        return getattr(self, key, default)
+
 
 def create_config(**kwargs) -> Config:
     """Create configuration with optional overrides."""
